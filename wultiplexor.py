@@ -314,7 +314,7 @@ async def server(host: str, port: int, secret: str, single: Optional[str] = None
     gp = GatesProvider(secret, single=single)
     try:
         async with serve(gp.handler, host=host, port=port):
-            logger.info("Serving on ws://localhost:8000/...")
+            logger.info(f"Serving on ws://{host}:{port}/...")
             await stop.wait()
     except OSError as e:
         logger.error(f"{e}")
