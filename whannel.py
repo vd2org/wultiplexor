@@ -16,6 +16,24 @@ from typing import Tuple, Optional, Awaitable, Callable
 from websockets import WebSocketCommonProtocol, ConnectionClosed
 from websockets import client as ws
 
+# Support for Python < 3.11
+# Can cause unexpected behavior in some cases
+if not hasattr(asyncio, "timeout"):
+    class Timeout:
+        def __init__(self, _):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+
+    timeout = Timeout
+
+    setattr(asyncio, "timeout", Timeout)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("whannel")
 logger.setLevel(logging.DEBUG if sys.flags.debug else logging.INFO)
@@ -50,7 +68,7 @@ def rw_factory(client_reader: StreamReader, client_writer: StreamWriter, ws: Web
                 if not data:
                     raise TimeoutError
                 client_writer.write(data)
-            except TimeoutError:
+            except (asyncio.TimeoutError, TimeoutError):
                 await ws.send(b"")
 
     return asyncio.create_task(reader()), asyncio.create_task(writer())
@@ -79,7 +97,7 @@ async def accept_connection(host: str, port: int, url: str, gate_id: str, connec
         reader, writer = rw_factory(client_reader, client_writer, connection)
         await asyncio.wait((reader, writer), return_when=asyncio.FIRST_COMPLETED)
         print("END!!!!")
-    except (TimeoutError, ConnectionError, ConnectionClosed) as e:
+    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
         logger.error(f"Broken data connection: {e}")
         logger.exception(f"Broken data connection: {e}")
     except Exception as e:
@@ -122,7 +140,7 @@ async def process_connection(stop_event: Event, control: WebSocketCommonProtocol
 
         if rep != "CONNECTION":
             raise ConnectionError(f"Wrong response: {connection_rep}")
-    except (TimeoutError, ConnectionError, ConnectionClosed, ValueError) as e:
+    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed, ValueError) as e:
         print("SET STOP EVENT")
         stop_event.set()
         logger.error(f"Control connection is broken: {e}")
@@ -137,7 +155,7 @@ async def process_connection(stop_event: Event, control: WebSocketCommonProtocol
         connection = await open_data_connection(f"{url}connect/{gate_id}/requestor/{connection_id}/{secret}")
         reader, writer = rw_factory(client_reader, client_writer, connection)
         await asyncio.wait((reader, writer), return_when=asyncio.FIRST_COMPLETED)
-    except (TimeoutError, ConnectionError, ConnectionClosed) as e:
+    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
         logger.error(f"Broken data connection: {e}")
     except Exception as e:
         logger.error(f"Unexpected error in data connection: {type(e)}: {e}")
@@ -197,9 +215,9 @@ async def tcp_requestor(url: str, host: str, port: int, gate: str):
                 await asyncio.wait_for(stop_event.wait(), TOUCH_TIMEOUT)
                 print("STOPPING EVENT!!!!")
                 return
-            except TimeoutError:
+            except (asyncio.TimeoutError, TimeoutError):
                 await control.send("TOUCH")
-    except (TimeoutError, ConnectionError, ConnectionClosed) as e:
+    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
         logger.error(f"Broken connection: {e}")
     except Exception as e:
         logger.error(f"Unexpected error: {type(e)}: {e}")
@@ -254,7 +272,7 @@ async def tcp_acceptor(url: str, host: str, port: int, secret: str):
 
                 conn = create_task(accept_connection(host, port, url, gate_id, connection_id, connection_secret))
                 connections.append(conn)
-            except TimeoutError:
+            except (asyncio.TimeoutError, TimeoutError):
                 await control.send("TOUCH")
 
                 # Cleaning up broken connections
@@ -264,20 +282,17 @@ async def tcp_acceptor(url: str, host: str, port: int, secret: str):
                         with suppress():
                             await conn
 
-    except (TimeoutError, ConnectionError, ConnectionClosed) as e:
+    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
         logger.error(f"Broken control connection: {e}")
     except Exception as e:
         logger.error(f"Unexpected error in control connection: {type(e)}: {e}")
     finally:
-        print(1)
         with suppress():
             await control.close()
-        print(2)
         for conn in connections:
             conn.cancel()
             with suppress(BaseException):
                 await conn
-        print(3)
 
 
 async def runner(worker: Callable[..., Awaitable], *args, **kwargs):
