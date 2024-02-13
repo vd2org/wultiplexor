@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 from argparse import ArgumentParser
@@ -66,7 +67,8 @@ async def accept_connection(host: str, port: int, url: str, gate_id: str, connec
 
         logger.debug("Connecting to target... ")
 
-        client_reader, client_writer = await asyncio.open_connection(host, port)
+        # client_reader, client_writer = await asyncio.open_connection(host, port)
+        client_reader, client_writer = await asyncio.open_unix_connection(os.environ.get("SOCK_PATH", "./debug_pipe"))
         logger.info(f"Connected to target server {host}:{port}!")
         logger.info(f"Serving connection!")
 
@@ -185,7 +187,8 @@ async def tcp_requestor(url: str, host: str, port: int, gate: str):
             connections.append(connection)
             return connection
 
-        srv = await asyncio.start_server(_process, host=host, port=port)
+        # srv = await asyncio.start_server(_process, host=host, port=port)
+        srv = await asyncio.start_unix_server(_process, path=os.environ.get("SOCK_PATH", "./debug_pipe"))
 
         while True:
             try:
