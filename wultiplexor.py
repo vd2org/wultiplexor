@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("wultiplexor")
 logger.setLevel(logging.DEBUG if sys.flags.debug else logging.INFO)
 
-CONNECTION_TIMEOUT = 300  # TODO!!!
+CONNECTION_TIMEOUT = 30
 TOUCH_TIMEOUT = 5
 TOKEN_LENGTH = getattr(secrets, "DEFAULT_ENTROPY", 32)
 
@@ -313,8 +313,6 @@ async def server(host: str, port: int, secret: str, single: Optional[str] = None
 
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(signal.SIGINT, lambda: stop.set())
-
-    print(secret)
 
     gp = GatesProvider(secret, single=single)
     try:
