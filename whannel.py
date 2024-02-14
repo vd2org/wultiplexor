@@ -16,25 +16,6 @@ from typing import Tuple, Optional, Awaitable, Callable, List
 from websockets import WebSocketCommonProtocol, ConnectionClosed
 from websockets import client as ws
 
-# Support for Python < 3.11
-# Can cause unexpected behavior in some cases
-# TBD: Remove this as well as asyncio.TimeoutError
-if not hasattr(asyncio, "timeout"):
-    class Timeout:
-        def __init__(self, _):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-
-    timeout = Timeout
-
-    setattr(asyncio, "timeout", Timeout)
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("whannel")
 logger.setLevel(logging.DEBUG if sys.flags.debug else logging.INFO)
@@ -50,13 +31,16 @@ class Base:
 
     @staticmethod
     async def _make_data_conn(url: str) -> WebSocketCommonProtocol:
-        async with asyncio.timeout(CONNECTION_TIMEOUT):
-            try:
-                logger.debug("Trying to open data connection...")
-                return await ws.connect(url)
-            except Exception as e:
-                logger.error(f"Failed to open data connection: {e}")
-                await asyncio.sleep(1)
+        async def _make():
+            while True:
+                try:
+                    logger.debug("Trying to open data connection...")
+                    return await ws.connect(url)
+                except Exception as e:
+                    logger.error(f"Failed to open data connection: {type(e)}: {e}, trying again...")
+                    await asyncio.sleep(1)
+
+        return await asyncio.wait_for(_make(), CONNECTION_TIMEOUT)
 
     @staticmethod
     def _make_rw(rd: StreamReader, wr: StreamWriter, ws: WebSocketCommonProtocol) -> Tuple[Task, Task]:
@@ -81,7 +65,9 @@ class Base:
 
     async def _make_control_conn(self, url: str) -> List[str]:
         """Opens control connection to the gate."""
-        async with asyncio.timeout(CONNECTION_TIMEOUT):
+
+        async def _make() -> List[str]:
+            """Opens control connection to the gate."""
             self._control = await ws.connect(url)
             msg = await self._control.recv()
             params = msg.split(" ")
@@ -89,8 +75,11 @@ class Base:
             if params[0] != "OK":
                 raise ConnectionError(f"Failed to connect to gate!")
 
-        logger.info(f"Connected to gate!")
+            return params
 
+        params = await asyncio.wait_for(_make(), CONNECTION_TIMEOUT)
+
+        logger.info(f"Connected to gate!")
         return params
 
     async def accept_connection(self, host: str, port: int, url: str, gate_id: str, connection_id: str, connection_secret: str):
