@@ -103,7 +103,7 @@ class Base:
             connection_url = f"{url}connect/{gate_id}/acceptor/{connection_id}/{connection_secret}"
 
             connection = await self._make_data_conn(connection_url)
-            logger.info(f"Established a new data connection {connection_id}!")
+            logger.info(f"Established a new data connection {connection_id} for gate {gate_id}!")
 
             logger.debug("Connecting to target... ")
 
@@ -169,6 +169,7 @@ class Base:
 
         try:
             connection = await self._make_data_conn(f"{url}connect/{gate_id}/requestor/{connection_id}/{secret}")
+            logger.info(f"Established a new data connection {connection_id} for gate {gate_id}!")
             reader, writer = self._make_rw(rd, wr, connection)
             await asyncio.wait((reader, writer), return_when=asyncio.FIRST_COMPLETED)
         except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
