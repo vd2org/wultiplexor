@@ -18,6 +18,7 @@ from websockets import client as ws
 
 # Support for Python < 3.11
 # Can cause unexpected behavior in some cases
+# TBD: Remove this as well as asyncio.TimeoutError
 if not hasattr(asyncio, "timeout"):
     class Timeout:
         def __init__(self, _):
