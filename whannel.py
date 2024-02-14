@@ -294,15 +294,26 @@ class Base:
                     await conn
 
 
-async def runner(worker: Callable[..., Awaitable], infinity: bool, *args, **kwargs):
-    # TODO: implement infinity mode
-
+async def runner(worker: Callable[..., Awaitable], *args, **kwargs):
     stop = asyncio.Event()
+    stop.clear()
+
+    async def run():
+        while True:
+            try:
+                await worker(*args, **kwargs)
+            except asyncio.CancelledError:
+                return
+            except BaseException:
+                pass
+
+            logger.warning("Restarting...")
+            await asyncio.sleep(1)
 
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(signal.SIGINT, lambda: stop.set())
 
-    task = asyncio.create_task(worker(*args, **kwargs))
+    task = asyncio.create_task(run())
     wait = asyncio.create_task(stop.wait())
 
     await asyncio.wait((task, wait), return_when=asyncio.FIRST_COMPLETED)
@@ -353,8 +364,7 @@ def main():
     if not (worker := workers.get(args.pop("mode"))):
         raise NotImplementedError(f"Mode is not implemented!")
 
-    # TODO: implement infinity mode
-    asyncio.run(runner(worker, False, **args))
+    asyncio.run(runner(worker, **args))
 
 
 if __name__ == "__main__":
