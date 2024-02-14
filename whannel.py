@@ -308,6 +308,8 @@ async def runner(worker: Callable[..., Awaitable], *args, **kwargs):
 
     await asyncio.wait((task, wait), return_when=asyncio.FIRST_COMPLETED)
 
+    logger.info("Exiting...")
+
     wait.cancel()
     task.cancel()
 
