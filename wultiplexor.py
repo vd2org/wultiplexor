@@ -250,7 +250,7 @@ class GatesProvider:
                     # await ws.send(b"")
                     continue
         except ConnectionClosed:
-            logger.info(f"[{self.remote_addr(ws)}] Data connection for {gate_id} connection is closed, cleaning up...")
+            logger.info(f"[{self.remote_addr(ws)}] Data connection {connection_id} for {gate_id} connection is closed, cleaning up...")
         except AlreadyEstablishedConnectionError:
             logger.error(f"[{self.remote_addr(ws)}] Connection {connection_id} already established!")
             gate = connection = None

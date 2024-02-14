@@ -11,7 +11,7 @@ import sys
 from argparse import ArgumentParser
 from asyncio import StreamReader, StreamWriter, create_task, Task, Event
 from contextlib import suppress
-from typing import Tuple, Optional, Awaitable, Callable
+from typing import Tuple, Optional, Awaitable, Callable, List
 
 from websockets import WebSocketCommonProtocol, ConnectionClosed
 from websockets import client as ws
@@ -40,263 +40,263 @@ logger = logging.getLogger("whannel")
 logger.setLevel(logging.DEBUG if sys.flags.debug else logging.INFO)
 
 CONNECTION_TIMEOUT = 30
-TOUCH_TIMEOUT = 50
+TOUCH_TIMEOUT = 5
 READ_SIZE = 1024
 
 
-async def open_data_connection(url: str) -> WebSocketCommonProtocol:
-    async with asyncio.timeout(CONNECTION_TIMEOUT):
-        try:
-            logger.debug("Trying to open data connection...")
-            return await ws.connect(url)
-        except Exception as e:
-            logger.error(f"Failed to open data connection: {e}")
-            await asyncio.sleep(1)
+class Base:
+    def __init__(self):
+        self._control: Optional[WebSocketCommonProtocol] = None
 
-
-def rw_factory(client_reader: StreamReader, client_writer: StreamWriter, ws: WebSocketCommonProtocol) -> Tuple[Task, Task]:
-    async def reader():
-        while not client_reader.at_eof():
-            data = await client_reader.read(READ_SIZE)
-            print("READ", data)
-            await ws.send(data)
-
-    async def writer():
-        while not ws.closed:
+    @staticmethod
+    async def _make_data_conn(url: str) -> WebSocketCommonProtocol:
+        async with asyncio.timeout(CONNECTION_TIMEOUT):
             try:
-                data = await asyncio.wait_for(ws.recv(), timeout=TOUCH_TIMEOUT)
-                print("WRITE", data)
-                if not data:
-                    raise TimeoutError
-                client_writer.write(data)
-            except (asyncio.TimeoutError, TimeoutError):
-                await ws.send(b"")
+                logger.debug("Trying to open data connection...")
+                return await ws.connect(url)
+            except Exception as e:
+                logger.error(f"Failed to open data connection: {e}")
+                await asyncio.sleep(1)
 
-    return asyncio.create_task(reader()), asyncio.create_task(writer())
+    @staticmethod
+    def _make_rw(rd: StreamReader, wr: StreamWriter, ws: WebSocketCommonProtocol) -> Tuple[Task, Task]:
+        async def reader():
+            while not rd.at_eof():
+                data = await rd.read(READ_SIZE)
+                print("READ", data)
+                await ws.send(data)
 
+        async def writer():
+            while not ws.closed:
+                try:
+                    data = await asyncio.wait_for(ws.recv(), timeout=TOUCH_TIMEOUT)
+                    print("WRITE", data)
+                    if not data:
+                        raise TimeoutError
+                    wr.write(data)
+                except (asyncio.TimeoutError, TimeoutError):
+                    await ws.send(b"")
 
-async def accept_connection(host: str, port: int, url: str, gate_id: str, connection_id: str, connection_secret: str):
-    client_writer: Optional[StreamWriter] = None
-    reader: Optional[Task] = None
-    writer: Optional[Task] = None
-    connection = None
+        return asyncio.create_task(reader()), asyncio.create_task(writer())
 
-    try:
-        connection_url = f"{url}connect/{gate_id}/acceptor/{connection_id}/{connection_secret}"
+    async def _make_control_conn(self, url: str) -> List[str]:
+        """Opens control connection to the gate."""
+        async with asyncio.timeout(CONNECTION_TIMEOUT):
+            self._control = await ws.connect(url)
+            msg = await self._control.recv()
+            params = msg.split(" ")
 
-        connection = await open_data_connection(connection_url)
-        logger.info(f"Established a new data connection {connection_id}!")
+            if params[0] != "OK":
+                raise ConnectionError(f"Failed to connect to gate!")
 
-        logger.debug("Connecting to target... ")
+        logger.info(f"Connected to gate!")
 
-        # client_reader, client_writer = await asyncio.open_connection(host, port)
-        client_reader, client_writer = await asyncio.open_unix_connection(os.environ.get("SOCK_PATH", "./debug_pipe"))
-        logger.info(f"Connected to target server {host}:{port}!")
-        logger.info(f"Serving connection!")
+        return params
 
-        # Working with connection
-        reader, writer = rw_factory(client_reader, client_writer, connection)
-        await asyncio.wait((reader, writer), return_when=asyncio.FIRST_COMPLETED)
-        print("END!!!!")
-    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
-        logger.error(f"Broken data connection: {e}")
-        logger.exception(f"Broken data connection: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error in data connection: {e}")
-    finally:
-        if reader:
-            reader.cancel()
-            with suppress(BaseException):
-                await reader
-        if writer:
-            writer.cancel()
-            with suppress(BaseException):
-                await writer
-        if client_writer is not None:
-            with suppress():
-                client_writer.close()
-        if connection is not None:
-            with suppress():
-                await connection.close()
+    async def accept_connection(self, host: str, port: int, url: str, gate_id: str, connection_id: str, connection_secret: str):
+        client_writer: Optional[StreamWriter] = None
+        reader: Optional[Task] = None
+        writer: Optional[Task] = None
+        connection = None
 
-        logger.info(f"Finished connection {connection_id}!")
+        try:
+            connection_url = f"{url}connect/{gate_id}/acceptor/{connection_id}/{connection_secret}"
 
+            connection = await self._make_data_conn(connection_url)
+            logger.info(f"Established a new data connection {connection_id}!")
 
-async def process_connection(stop_event: Event, control: WebSocketCommonProtocol,
-                             client_reader: StreamReader, client_writer: StreamWriter,
-                             url: str, gate_id: str):
-    connection: Optional[WebSocketCommonProtocol] = None
-    reader: Optional[Task] = None
-    writer: Optional[Task] = None
-    connection_id = None
+            logger.debug("Connecting to target... ")
 
-    try:
-        await control.send("CONNECT")
-        while True:
-            connection_rep = await asyncio.wait_for(control.recv(), CONNECTION_TIMEOUT)
-            if connection_rep != "TOUCH":
-                break
-        print(connection_rep)
-        rep, connection_id, secret = connection_rep.split(" ")
+            # client_reader, client_writer = await asyncio.open_connection(host, port)
+            client_reader, client_writer = await asyncio.open_unix_connection(os.environ.get("SOCK_PATH", "./debug_pipe"))
+            logger.info(f"Connected to target server {host}:{port}!")
+            logger.info(f"Serving connection!")
 
-        if rep != "CONNECTION":
-            raise ConnectionError(f"Wrong response: {connection_rep}")
-    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed, ValueError) as e:
-        print("SET STOP EVENT")
-        stop_event.set()
-        logger.error(f"Control connection is broken: {e}")
-        return
-    except Exception as e:
-        print("SET STOP EVENT")
-        stop_event.set()
-        logger.error(f"Unexpected error in control connection: {type(e)}: {e}")
-        return
-
-    try:
-        connection = await open_data_connection(f"{url}connect/{gate_id}/requestor/{connection_id}/{secret}")
-        reader, writer = rw_factory(client_reader, client_writer, connection)
-        await asyncio.wait((reader, writer), return_when=asyncio.FIRST_COMPLETED)
-    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
-        logger.error(f"Broken data connection: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error in data connection: {type(e)}: {e}")
-    finally:
-        if reader:
-            reader.cancel()
-            with suppress(BaseException):
-                await reader
-        if writer:
-            writer.cancel()
-            with suppress(BaseException):
-                await writer
-        with suppress():
-            client_writer.close()
-        if connection is not None:
-            if connection:
+            # Working with connection
+            reader, writer = self._make_rw(client_reader, client_writer, connection)
+            await asyncio.wait((reader, writer), return_when=asyncio.FIRST_COMPLETED)
+            print("END!!!!")
+        except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
+            logger.error(f"Broken data connection: {e}")
+            logger.exception(f"Broken data connection: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error in data connection: {e}")
+        finally:
+            if reader:
+                reader.cancel()
+                with suppress(BaseException):
+                    await reader
+            if writer:
+                writer.cancel()
+                with suppress(BaseException):
+                    await writer
+            if client_writer is not None:
+                with suppress():
+                    client_writer.close()
+            if connection is not None:
                 with suppress():
                     await connection.close()
 
-        if connection_id:
             logger.info(f"Finished connection {connection_id}!")
-        else:
-            logger.info(f"Finished unknown connection!")
 
+    async def process_connection(self, stop_event: Event, rd: StreamReader, wr: StreamWriter, url: str, gate_id: str):
+        connection: Optional[WebSocketCommonProtocol] = None
+        reader: Optional[Task] = None
+        writer: Optional[Task] = None
+        connection_id = None
 
-async def tcp_requestor(url: str, host: str, port: int, gate: str):
-    gate_id = gate
-    control_url = f"{url}associate/{gate_id}"
+        try:
+            await self._control.send("CONNECT")
+            while True:
+                connection_rep = await asyncio.wait_for(self._control.recv(), CONNECTION_TIMEOUT)
+                if connection_rep != "TOUCH":
+                    break
+            print(connection_rep)
+            rep, connection_id, secret = connection_rep.split(" ")
 
-    logger.debug(f"Connecting to {control_url}...")
+            if rep != "CONNECTION":
+                raise ConnectionError(f"Wrong response: {connection_rep}")
+        except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed, ValueError) as e:
+            print("SET STOP EVENT")
+            stop_event.set()
+            logger.error(f"Control connection is broken: {e}")
+            return
+        except Exception as e:
+            print("SET STOP EVENT")
+            stop_event.set()
+            logger.error(f"Unexpected error in control connection: {type(e)}: {e}")
+            return
 
-    stop_event = asyncio.Event()
-
-    control = None
-    srv = None
-    connections = []
-
-    try:
-        # Opening control connection
-        async with asyncio.timeout(CONNECTION_TIMEOUT):
-            control = await ws.connect(control_url)
-            if await control.recv() != "OK":
-                raise ConnectionError(f"Failed to connect to gate: {gate_id}")
-
-        logger.info(f"Connected to gate {gate_id}!")
-
-        def _process(client_reader: StreamReader, client_writer: StreamWriter):
-            connection = asyncio.create_task(process_connection(stop_event, control, client_reader, client_writer, url, gate_id))
-            connections.append(connection)
-            return connection
-
-        # srv = await asyncio.start_server(_process, host=host, port=port)
-        srv = await asyncio.start_unix_server(_process, path=os.environ.get("SOCK_PATH", "./debug_pipe"))
-
-        while True:
-            try:
-                await asyncio.wait_for(stop_event.wait(), TOUCH_TIMEOUT)
-                print("STOPPING EVENT!!!!")
-                return
-            except (asyncio.TimeoutError, TimeoutError):
-                await control.send("TOUCH")
-    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
-        logger.error(f"Broken connection: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error: {type(e)}: {e}")
-    finally:
-        if srv:
+        try:
+            connection = await self._make_data_conn(f"{url}connect/{gate_id}/requestor/{connection_id}/{secret}")
+            reader, writer = self._make_rw(rd, wr, connection)
+            await asyncio.wait((reader, writer), return_when=asyncio.FIRST_COMPLETED)
+        except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
+            logger.error(f"Broken data connection: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error in data connection: {type(e)}: {e}")
+        finally:
+            if reader:
+                reader.cancel()
+                with suppress(BaseException):
+                    await reader
+            if writer:
+                writer.cancel()
+                with suppress(BaseException):
+                    await writer
             with suppress():
-                srv.close()
-        if control:
+                wr.close()
+            if connection is not None:
+                if connection:
+                    with suppress():
+                        await connection.close()
+
+            if connection_id:
+                logger.info(f"Finished connection {connection_id}!")
+            else:
+                logger.info(f"Finished unknown connection!")
+
+    async def tcp_requestor(self, url: str, host: str, port: int, gate: str):
+        gate_id = gate
+        control_url = f"{url}associate/{gate_id}"
+
+        logger.debug(f"Connecting to {control_url}...")
+
+        stop_event = asyncio.Event()
+
+        srv = None
+        connections = []
+
+        try:
+            await self._make_control_conn(control_url)
+
+            def _process(rd: StreamReader, wr: StreamWriter):
+                connection = asyncio.create_task(self.process_connection(stop_event, rd, wr, url, gate_id))
+                connections.append(connection)
+                return connection
+
+            # srv = await asyncio.start_server(_process, host=host, port=port)
+            srv = await asyncio.start_unix_server(_process, path=os.environ.get("SOCK_PATH", "./debug_pipe"))
+
+            while True:
+                try:
+                    await asyncio.wait_for(stop_event.wait(), TOUCH_TIMEOUT)
+                    print("STOPPING EVENT!!!!")
+                    return
+                except (asyncio.TimeoutError, TimeoutError):
+                    await self._control.send("TOUCH")
+        except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
+            logger.error(f"Broken connection: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error: {type(e)}: {e}")
+        finally:
+            if srv:
+                with suppress():
+                    srv.close()
+            if self._control:
+                with suppress():
+                    await self._control.close()
+            for conn in connections:
+                conn.cancel()
+                with suppress(BaseException):
+                    await conn
+
+            print("FINISHED!!!!")
+
+    async def tcp_acceptor(self, url: str, host: str, port: int, secret: str):
+        control_url = f"{url}create/{secret}"
+
+        logger.debug(f"Connecting to {control_url}...")
+
+        connections = []
+
+        try:
+            _, gate_id = await self._make_control_conn(control_url)
+
+            logger.info(f"Created new gate {gate_id}!")
+
+            while True:
+                try:
+                    connect_req = await asyncio.wait_for(self._control.recv(), TOUCH_TIMEOUT)
+
+                    req, *params = connect_req.split(" ")
+
+                    if req == "TOUCH":
+                        raise TimeoutError
+
+                    if req != "CONNECTION":
+                        raise ConnectionError(f"Invalid request: {connect_req}")
+
+                    connection_id, connection_secret = params
+
+                    conn = create_task(self.accept_connection(host, port, url, gate_id, connection_id, connection_secret))
+                    connections.append(conn)
+                except (asyncio.TimeoutError, TimeoutError):
+                    await self._control.send("TOUCH")
+
+                    # Cleaning up broken connections
+                    for conn in list(connections):
+                        if conn.done():
+                            connections.remove(conn)
+                            with suppress():
+                                await conn
+
+        except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
+            logger.error(f"Broken control connection: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error in control connection: {type(e)}: {e}")
+        finally:
             with suppress():
-                await control.close()
-        for conn in connections:
-            conn.cancel()
-            with suppress(BaseException):
-                await conn
-
-        print("FINISHED!!!!")
+                await self._control.close()
+            for conn in connections:
+                conn.cancel()
+                with suppress(BaseException):
+                    await conn
 
 
-async def tcp_acceptor(url: str, host: str, port: int, secret: str):
-    control_url = f"{url}create/{secret}"
+async def runner(worker: Callable[..., Awaitable], infinity: bool, *args, **kwargs):
+    # TODO: implement infinity mode
 
-    logger.debug(f"Connecting to {control_url}...")
-
-    control = None
-    connections = []
-
-    try:
-        # Opening control connection
-        async with asyncio.timeout(CONNECTION_TIMEOUT):
-            control = await ws.connect(control_url)
-            msg = await control.recv()
-            ok, gate_id = msg.split(" ")
-
-            if ok != "OK":
-                raise ConnectionError(f"Failed to create a gate: {gate_id}")
-
-        logger.info(f"Created new gate {gate_id}!")
-
-        while True:
-            try:
-                connect_req = await asyncio.wait_for(control.recv(), TOUCH_TIMEOUT)
-
-                req, *params = connect_req.split(" ")
-
-                if req == "TOUCH":
-                    raise TimeoutError
-
-                if req != "CONNECTION":
-                    raise ConnectionError(f"Invalid request: {connect_req}")
-
-                connection_id, connection_secret = params
-
-                conn = create_task(accept_connection(host, port, url, gate_id, connection_id, connection_secret))
-                connections.append(conn)
-            except (asyncio.TimeoutError, TimeoutError):
-                await control.send("TOUCH")
-
-                # Cleaning up broken connections
-                for conn in list(connections):
-                    if conn.done():
-                        connections.remove(conn)
-                        with suppress():
-                            await conn
-
-    except (asyncio.TimeoutError, TimeoutError, ConnectionError, ConnectionClosed) as e:
-        logger.error(f"Broken control connection: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error in control connection: {type(e)}: {e}")
-    finally:
-        with suppress():
-            await control.close()
-        for conn in connections:
-            conn.cancel()
-            with suppress(BaseException):
-                await conn
-
-
-async def runner(worker: Callable[..., Awaitable], *args, **kwargs):
     stop = asyncio.Event()
 
     loop = asyncio.get_event_loop()
@@ -344,8 +344,8 @@ def main():
     args = vars(parser.parse_args())
 
     workers = {
-        "requestor": tcp_requestor,
-        "acceptor": tcp_acceptor,
+        "requestor": Base().tcp_requestor,
+        "acceptor": Base().tcp_acceptor,
         # "sock-requestor": sock_requestor,
         # "sock-acceptor": sock_acceptor,
     }
@@ -353,7 +353,8 @@ def main():
     if not (worker := workers.get(args.pop("mode"))):
         raise NotImplementedError(f"Mode is not implemented!")
 
-    asyncio.run(runner(worker, **args))
+    # TODO: implement infinity mode
+    asyncio.run(runner(worker, False, **args))
 
 
 if __name__ == "__main__":
