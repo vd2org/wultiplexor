@@ -25,7 +25,7 @@ NAME = "wultiplexor"
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(NAME)
 logger.setLevel(logging.DEBUG if sys.flags.debug else logging.INFO)
-logging.getLogger("websockets").setLevel(logging.DEBUG if sys.flags.debug else logging.ERROR)
+logging.getLogger("websockets").setLevel(logging.INFO if sys.flags.debug else logging.ERROR)
 
 CONNECTION_TIMEOUT = 30
 TOUCH_TIMEOUT = 5
@@ -60,12 +60,11 @@ class Gate:
 
 
 class GatesProvider:
-    def __init__(self, secret: str, single: Optional[str] = None):
+    def __init__(self, secret: str):
         self._gates: Dict[str, Gate] = {}
         self._secret: str = secret
-        self._single: Optional[str] = single
 
-    async def auth(self, ws, secret: str):
+    async def auth(self, ws: WebSocketServerProtocol, secret: str):
         """Authenticates the client."""
 
         if not secrets.compare_digest(secret, self._secret):
@@ -82,27 +81,33 @@ class GatesProvider:
         """Formats the remote address of the client."""
         return ":".join(map(str, ws.remote_address))
 
-    async def _create(self, ws: WebSocketServerProtocol):
+    async def _close(self, gate: Gate):
+        with suppress():
+            await gate.control.close()
+
+        for associated in gate.associated.values():
+            with suppress():
+                await associated.close()
+
+        for connection in gate.connections.values():
+            with suppress():
+                await connection.requestor.close()
+            with suppress():
+                await connection.acceptor.close()
+
+    async def _create(self, ws: WebSocketServerProtocol, gate_id: str):
         """Creates a new gateway connection."""
 
-        if self._single and self._single in self._gates:
-            logger.warning(f"[{self.remote_addr(ws)}] In single mode, closing the existing gate...")
-            eg = self._gates.pop(self._single)
-            with suppress():
-                await eg.control.close()
+        if existing := self._gates.pop(gate_id, None):   # TODO!!!
+            logger.info(f"[{self.remote_addr(ws)}] Closing the existing gate...")
+            await self._close(existing)
 
-        if self._single:
-            gate_id = self._single
-        else:
-            while (gate_id := self.generate_gate_id()) in self._gates:
-                pass
-
-        self._gates[gate_id] = gate = Gate(id=gate_id, control=ws, associated={}, connections={})
+        self._gates[gate_id] = gate = Gate(id=gate_id, control=ws, associated={}, connections={})  # TODO!!!
 
         logger.info(f"[{self.remote_addr(ws)}] Creating a new gate {gate_id}...")
 
         try:
-            await ws.send(f"OK {gate_id}")
+            await ws.send("OK")
 
             # Holding the connection: receiving data, ignoring it and sending a touch
             while True:
@@ -121,18 +126,7 @@ class GatesProvider:
             logger.debug(f"[{self.remote_addr(ws)}] Error: {type(e)}: {e}")
             logger.info(f"[{self.remote_addr(ws)}] Gateway {gate_id} connection is broken, closing...")
         finally:
-            with suppress():
-                self._gates.pop(gate_id, None)
-
-            for associated in gate.associated.values():
-                with suppress():
-                    await associated.close()
-
-            for connection in gate.connections.values():
-                with suppress():
-                    await connection.requestor.close()
-                with suppress():
-                    await connection.acceptor.close()
+            await self._close(gate)
             with suppress():
                 await ws.close()
 
@@ -252,7 +246,7 @@ class GatesProvider:
                     await opposite.send(data)
                 except TimeoutError:
                     logger.debug(f"[{self.remote_addr(ws)}] Idle data connection {connection_id}...")
-                    # await ws.send(b"")
+                    await ws.send(b"")
                     continue
         except ConnectionClosed:
             logger.info(f"[{self.remote_addr(ws)}] Data connection {connection_id} for {gate_id} connection is closed, cleaning up...")
@@ -297,9 +291,9 @@ class GatesProvider:
                 gate_id, = splitted
                 await self._associate(ws, gate_id)
             elif action == "create":
-                secret, = splitted
+                gate_id, secret = splitted
                 await self.auth(ws, secret)
-                await self._create(ws)
+                await self._create(ws, gate_id)
             else:
                 raise ValueError
         except AuthenticationError:
@@ -321,7 +315,7 @@ async def server(host: str, port: int, secret: str, single: Optional[str] = None
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(signal.SIGINT, lambda: stop.set())
 
-    gp = GatesProvider(secret, single=single)
+    gp = GatesProvider(secret)
     try:
         async with serve(gp.handler, host=host, port=port):
             logger.info(f"Serving on ws://{host}:{port}/...")
@@ -343,8 +337,6 @@ def main():
     parser.add_argument("-b", "--host", default="127.0.0.1", help="The host to bind to.")
     parser.add_argument("-p", "--port", default=8000, type=int, help="The port to bind to.")
     parser.add_argument("-s", "--secret", required=True, default=None, help="The secret to use for authentication.")
-
-    parser.add_argument("--single", help="Limit the server to a single gateway.")
 
     args = parser.parse_args()
 

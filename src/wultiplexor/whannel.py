@@ -411,11 +411,11 @@ class BaseRequestor(Base):
 
 
 class BaseAcceptor(Base):
-    def __init__(self, url: str, secret: str, ident: str):
+    def __init__(self, url: str, secret: str, ident: str, gate: str):
         super().__init__(url)
         self._secret: str = secret
 
-        self._gate_id: Optional[str] = None  # TODO: gate_id should come from cli!
+        self._gate_id: Optional[str] = gate
 
         self._ident: Optional[str] = ident
 
@@ -445,8 +445,8 @@ class BaseAcceptor(Base):
 
     async def serve(self):
         try:
-            self._control = await ControlConnection(self._url, "create", self._secret).open()
-            self._gate_id, = await self._control.recv("OK", 1)
+            self._control = await ControlConnection(self._url, "create", self._gate_id, self._secret).open()
+            await self._control.recv("OK")
 
             while True:
                 connection_id, secret = await self._control.recv("CONNECTION", 2, forever=True)
@@ -474,8 +474,8 @@ class TcpRequestor(BaseRequestor):
 
 
 class TcpAcceptor(BaseAcceptor):
-    def __init__(self, url: str, secret: str, host: str, port: int):
-        super().__init__(url, secret, f"{host}:{port}")
+    def __init__(self, url: str, secret: str, host: str, port: int, gate: str):
+        super().__init__(url, secret, f"{host}:{port}", gate)
         self._host: str = host
         self._port: int = port
 
@@ -493,8 +493,8 @@ class SockRequestor(BaseRequestor):
 
 
 class SockAcceptor(BaseAcceptor):
-    def __init__(self, url: str, secret: str, path: str):
-        super().__init__(url, secret, path)
+    def __init__(self, url: str, secret: str, path: str, gate: str):
+        super().__init__(url, secret, path, gate)
         self._path: str = path
 
     async def _connect(self) -> Tuple[StreamReader, StreamWriter]:
@@ -553,6 +553,7 @@ def main():
     acceptor = subs.add_parser("acceptor", help="The acceptor mode.")
     acceptor.add_argument("host", help="Hostname/ip to connect to.")
     acceptor.add_argument("port", type=int, help="A port to connect to.")
+    acceptor.add_argument("gate", type=str, help="A name of the gate.")
     acceptor.add_argument("-s", "--secret", default="gate", help="The secret to use for authentication.")
 
     sock_requestor = subs.add_parser("sock-requestor", help="The sock requestor mode.")
@@ -561,6 +562,7 @@ def main():
 
     sock_acceptor = subs.add_parser("sock-acceptor", help="The sock acceptor mode.")
     sock_acceptor.add_argument("path", help="Path to a socket file to connect to.")
+    sock_acceptor.add_argument("gate", type=str, help="A name of the gate.")
     sock_acceptor.add_argument("-s", "--secret", default="gate", help="The secret to use for authentication.")
 
     args = vars(parser.parse_args())
