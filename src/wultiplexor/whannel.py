@@ -1,6 +1,6 @@
 # Copyright (C) 2024 by Ivan.
-# This file is part of Rocketgram, the modern Telegram bot framework.
-# Rocketgram is released under the MIT License (see LICENSE).
+# This file is part of Wultiplexor project.
+# Wultiplexor is released under the MIT License (see LICENSE).
 
 
 import asyncio
