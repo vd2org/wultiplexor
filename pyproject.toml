@@ -1,0 +1,21 @@
+[project]
+name = "wultiplexor"
+version = "0.0.1"
+description = "This tool is for forwarding TCP or SOC connections from one computer to another using a central web socket server."
+authors = [
+    { name = "Vd", email = "wultiplexor@vd2.org" },
+]
+dependencies = [
+    "websockets^12.0",
+]
+requires-python = ">=3.8,<3.13"
+readme = "README.md"
+license = { text = "MIT" }
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true

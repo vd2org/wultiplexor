@@ -1,4 +1,4 @@
-# Copyright (C) 2024 by Ivan.
+# Copyright (C) 2024 by Vd.
 # This file is part of Rocketgram, the modern Telegram bot framework.
 # Rocketgram is released under the MIT License (see LICENSE).
 
