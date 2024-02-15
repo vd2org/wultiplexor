@@ -533,23 +533,23 @@ def main():
     parser = ArgumentParser(prog="whannel", description="The websocket connections multiplexor gateway client.")
     parser.add_argument("url", help="Gateway connection URL.")
 
-    suppress = parser.add_subparsers(title="Working mode", metavar="mode", required=True, dest="mode")
+    subs = parser.add_subparsers(title="Working mode", metavar="mode", required=True, dest="mode")
 
-    requestor = suppress.add_parser("requestor", help="The requestor mode.")
+    requestor = subs.add_parser("requestor", help="The requestor mode.")
     requestor.add_argument("gate", help="Gateway id.")
     requestor.add_argument("port", type=int, help="Port to listen.")
     requestor.add_argument("-n", "--host", default="localhost", help="Hostname/ip to listen.")
 
-    acceptor = suppress.add_parser("acceptor", help="The acceptor mode.")
+    acceptor = subs.add_parser("acceptor", help="The acceptor mode.")
     acceptor.add_argument("host", help="Hostname/ip to connect to.")
     acceptor.add_argument("port", type=int, help="Port to connect to.")
     acceptor.add_argument("-s", "--secret", default="gate", help="The secret to use for authentication.")
 
-    sock_requestor = suppress.add_parser("sock-requestor", help="The sock requestor mode.")
+    sock_requestor = subs.add_parser("sock-requestor", help="The sock requestor mode.")
     sock_requestor.add_argument("gate", help="Gateway id.")
     sock_requestor.add_argument("path", default="./connect.sock", help="Path to listen socket file.")
 
-    sock_acceptor = suppress.add_parser("sock-acceptor", help="The sock acceptor mode.")
+    sock_acceptor = subs.add_parser("sock-acceptor", help="The sock acceptor mode.")
     sock_acceptor.add_argument("path", help="Path to socket file to connect to.")
     sock_acceptor.add_argument("-s", "--secret", default="gate", help="The secret to use for authentication.")
 
