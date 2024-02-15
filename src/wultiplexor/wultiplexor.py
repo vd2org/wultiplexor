@@ -98,11 +98,11 @@ class GatesProvider:
     async def _create(self, ws: WebSocketServerProtocol, gate_id: str):
         """Creates a new gateway connection."""
 
-        if existing := self._gates.pop(gate_id, None):   # TODO!!!
+        if existing := self._gates.pop(gate_id, None):
             logger.info(f"[{self.remote_addr(ws)}] Closing the existing gate...")
             await self._close(existing)
 
-        self._gates[gate_id] = gate = Gate(id=gate_id, control=ws, associated={}, connections={})  # TODO!!!
+        self._gates[gate_id] = gate = Gate(id=gate_id, control=ws, associated={}, connections={})
 
         logger.info(f"[{self.remote_addr(ws)}] Creating a new gate {gate_id}...")
 
