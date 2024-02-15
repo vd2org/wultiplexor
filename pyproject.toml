@@ -1,16 +1,43 @@
 [project]
 name = "wultiplexor"
-version = "0.0.1"
+version = "0.0.2"
 description = "This tool is for forwarding TCP or SOCK connections from one computer to another using a central web socket server."
+keywords = [
+    "proxy", "gate", "gateway", "websocket", "network", "networking", "websockets", "tcp", "socks",
+    "forward", "forwarding", "tunnel", "tunneling", "tunnelling", "multiplex", "multiplexing", "multiplexer"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Topic :: Internet :: Proxy Servers",
+    "Topic :: System :: Networking",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 authors = [
     { name = "Vd", email = "wultiplexor@vd2.org" },
 ]
+urls = [
+    { homepage = "https://github.com/vd2org/wultiplexor" },
+    { repository = "https://github.com/vd2org/wultiplexor.git" },
+    { issues = "https://github.com/vd2org/wultiplexor/issues" },
+]
+
+requires-python = ">=3.8,<3.13"
+readme = "README.md"
+license = { file = "LICENSE" }
 dependencies = [
     "websockets~=12.0",
 ]
-requires-python = ">=3.8,<3.13"
-readme = "README.md"
-license = { text = "MIT" }
+
 
 [build-system]
 requires = ["pdm-backend"]

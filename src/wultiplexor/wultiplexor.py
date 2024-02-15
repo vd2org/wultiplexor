@@ -18,7 +18,7 @@ from typing import Dict, Optional
 from websockets import serve, WebSocketServerProtocol, ConnectionClosed
 from websockets.frames import CloseCode
 
-from version import VERSION, PROTOCOL_VERSION
+from .version import VERSION, PROTOCOL_VERSION
 
 NAME = "wultiplexor"
 

@@ -15,7 +15,7 @@ from typing import Optional, Awaitable, Callable, List, Tuple
 from websockets import WebSocketCommonProtocol
 from websockets import client as ws
 
-from version import VERSION, PROTOCOL_VERSION
+from .version import VERSION, PROTOCOL_VERSION
 
 NAME = "whannel"
 
