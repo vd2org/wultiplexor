@@ -8,7 +8,8 @@ import logging
 import signal
 import sys
 from argparse import ArgumentParser
-from asyncio import StreamReader, StreamWriter, Task, CancelledError, QueueFull, Server
+from asyncio import StreamReader, StreamWriter, Task, CancelledError, QueueFull
+from asyncio.base_events import Server
 from contextlib import suppress
 from typing import Optional, Awaitable, Callable, List, Tuple
 

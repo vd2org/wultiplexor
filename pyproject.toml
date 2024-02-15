@@ -1,6 +1,6 @@
 [project]
 name = "wultiplexor"
-version = "0.0.2"
+version = "0.0.4"
 description = "This tool is for forwarding TCP or SOCK connections from one computer to another using a central web socket server."
 keywords = [
     "proxy", "gate", "gateway", "websocket", "network", "networking", "websockets", "tcp", "socks",

@@ -3,5 +3,5 @@
 # Wultiplexor is released under the MIT License (see LICENSE).
 
 
-VERSION = "0.0.2"
-PROTOCOL_VERSION = "0.0.2"
+VERSION = "0.0.4"
+PROTOCOL_VERSION = "0.0.4"
