@@ -2,6 +2,7 @@
 /.data
 .DS_Store
 .pdm-python
+.pdm-build
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

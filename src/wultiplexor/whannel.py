@@ -15,9 +15,14 @@ from typing import Optional, Awaitable, Callable, List, Tuple
 from websockets import WebSocketCommonProtocol
 from websockets import client as ws
 
+from version import VERSION, PROTOCOL_VERSION
+
+NAME = "whannel"
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("whannel")
+logger = logging.getLogger(NAME)
 logger.setLevel(logging.DEBUG if sys.flags.debug else logging.INFO)
+logging.getLogger("websockets").setLevel(logging.DEBUG if sys.flags.debug else logging.ERROR)
 
 RESTART_TIMEOUT = 3
 CONNECTION_TIMEOUT = 30
@@ -498,8 +503,9 @@ class SockAcceptor(BaseAcceptor):
 
 
 async def runner(worker: Callable[..., Awaitable], *args, **kwargs):
+    logger.info(f"Starting {NAME} version {VERSION}, protocol {PROTOCOL_VERSION}...")
+
     stop = asyncio.Event()
-    stop.clear()
 
     async def run():
         while True:
@@ -530,7 +536,10 @@ async def runner(worker: Callable[..., Awaitable], *args, **kwargs):
 
 
 def main():
-    parser = ArgumentParser(prog="whannel", description="The websocket connections multiplexor gateway client.")
+    parser = ArgumentParser(prog=NAME, description="The websocket connections multiplexor gateway client.")
+
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}, protocol {PROTOCOL_VERSION}")
+
     parser.add_argument("url", help="Gateway connection URL.")
 
     subs = parser.add_subparsers(title="Working mode", metavar="mode", required=True, dest="mode")
@@ -542,7 +551,7 @@ def main():
 
     acceptor = subs.add_parser("acceptor", help="The acceptor mode.")
     acceptor.add_argument("host", help="Hostname/ip to connect to.")
-    acceptor.add_argument("port", type=int, help="Port to connect to.")
+    acceptor.add_argument("port", type=int, help="A port to connect to.")
     acceptor.add_argument("-s", "--secret", default="gate", help="The secret to use for authentication.")
 
     sock_requestor = subs.add_parser("sock-requestor", help="The sock requestor mode.")
@@ -550,7 +559,7 @@ def main():
     sock_requestor.add_argument("path", default="./connect.sock", help="Path to listen socket file.")
 
     sock_acceptor = subs.add_parser("sock-acceptor", help="The sock acceptor mode.")
-    sock_acceptor.add_argument("path", help="Path to socket file to connect to.")
+    sock_acceptor.add_argument("path", help="Path to a socket file to connect to.")
     sock_acceptor.add_argument("-s", "--secret", default="gate", help="The secret to use for authentication.")
 
     args = vars(parser.parse_args())

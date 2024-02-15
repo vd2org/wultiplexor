@@ -18,9 +18,14 @@ from typing import Dict, Optional
 from websockets import serve, WebSocketServerProtocol, ConnectionClosed
 from websockets.frames import CloseCode
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("wultiplexor")
+from version import VERSION, PROTOCOL_VERSION
+
+NAME = "wultiplexor"
+
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(NAME)
 logger.setLevel(logging.DEBUG if sys.flags.debug else logging.INFO)
+logging.getLogger("websockets").setLevel(logging.DEBUG if sys.flags.debug else logging.ERROR)
 
 CONNECTION_TIMEOUT = 30
 TOUCH_TIMEOUT = 5
@@ -309,6 +314,8 @@ class GatesProvider:
 
 
 async def server(host: str, port: int, secret: str, single: Optional[str] = None):
+    logger.info(f"Starting {NAME} version {VERSION}, protocol {PROTOCOL_VERSION}...")
+
     stop = asyncio.Event()
 
     loop = asyncio.get_event_loop()
@@ -326,10 +333,16 @@ async def server(host: str, port: int, secret: str, single: Optional[str] = None
 
 
 def main():
-    parser = ArgumentParser(prog="wultiplexor", description="The websocket connections multiplexor gateway.")
-    parser.add_argument("-n", "--host", default="localhost", help="The host to bind to.")
+    parser = ArgumentParser(
+        prog=NAME,
+        usage=f"%(prog)s -b 0.0.0.0 -p 8000 -s {secrets.token_urlsafe(32)}",
+        description="The websocket connections multiplexor gateway server."
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}, protocol {PROTOCOL_VERSION}")
+
+    parser.add_argument("-b", "--host", default="127.0.0.1", help="The host to bind to.")
     parser.add_argument("-p", "--port", default=8000, type=int, help="The port to bind to.")
-    parser.add_argument("-s", "--secret", default="gate", help="The secret to use for authentication.")
+    parser.add_argument("-s", "--secret", required=True, default=None, help="The secret to use for authentication.")
 
     parser.add_argument("--single", help="Limit the server to a single gateway.")
 
