@@ -143,8 +143,8 @@ class ControlConnection:
         try:
             await self._wait_lock.acquire()
             msg = await self._queue.get() if forever else await asyncio.wait_for(self._queue.get(), self._connection_timeout)
-            if msg is ...:
-                return
+            if msg in (..., None):
+                raise ControlConnectionError
             parts = msg.split(" ")
 
             if not parts[0] == expected_prefix or len(parts) != expected_parts + 1:
@@ -514,6 +514,7 @@ async def runner(worker: Callable[..., Awaitable], *args, **kwargs):
             except CancelledError:
                 raise
             else:
+                await asyncio.sleep(0)
                 logger.warning("Restarting...")
                 await asyncio.sleep(RESTART_TIMEOUT)
 
