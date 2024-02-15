@@ -22,22 +22,19 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-authors = [
-    { name = "Vd", email = "wultiplexor@vd2.org" },
-]
-urls = [
-    { homepage = "https://github.com/vd2org/wultiplexor" },
-    { repository = "https://github.com/vd2org/wultiplexor.git" },
-    { issues = "https://github.com/vd2org/wultiplexor/issues" },
-]
-
+authors = [{ name = "Vd", email = "wultiplexor@vd2.org" }, ]
 requires-python = ">=3.8,<3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
+
 dependencies = [
     "websockets~=12.0",
 ]
 
+[project.urls]
+homepage = "https://github.com/vd2org/wultiplexor"
+repository = "https://github.com/vd2org/wultiplexor.git"
+issues = "https://github.com/vd2org/wultiplexor/issues"
 
 [build-system]
 requires = ["pdm-backend"]
