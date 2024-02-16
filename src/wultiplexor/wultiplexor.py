@@ -60,26 +60,28 @@ class Gate:
 
 
 class GatesProvider:
-    def __init__(self, secret: str):
+    def __init__(self, secret: str, remote_addr_header: Optional[str], path_prefix: str):
         self._gates: Dict[str, Gate] = {}
         self._secret: str = secret
+        self._remote_addr_header: Optional[str] = remote_addr_header
+        self._prefix: Optional[str] = path_prefix
 
     async def auth(self, ws: WebSocketServerProtocol, secret: str):
         """Authenticates the client."""
-
         if not secrets.compare_digest(secret, self._secret):
             raise AuthenticationError
 
     @staticmethod
     def generate_gate_id(groups: int = 4, group_size: int = 4, alphabet: str = string.ascii_lowercase, separator: str = "_") -> str:
         """Generates a new human-readable gate id."""
-
         return separator.join(str().join(secrets.choice(alphabet) for _ in range(group_size)) for _ in range(groups))
 
-    @staticmethod
-    def remote_addr(ws: WebSocketServerProtocol) -> str:
+    def remote_addr(self, ws: WebSocketServerProtocol) -> str:
         """Formats the remote address of the client."""
-        return ":".join(map(str, ws.remote_address))
+        client = None
+        if self._remote_addr_header:
+            client = ws.request_headers.get(self._remote_addr_header, None)
+        return client or ":".join(map(str, ws.remote_address))
 
     async def _close(self, gate: Gate):
         with suppress():
@@ -276,11 +278,10 @@ class GatesProvider:
     async def handler(self, ws: WebSocketServerProtocol, path: str):
         """Parse the path and dispatch the request."""
 
-        client_addr = ":".join(map(str, ws.remote_address))
-        logger.debug(f"New connection from: {client_addr} with path {path}")
+        logger.debug(f"New connection from: {self.remote_addr(ws)} with path {path}")
 
         try:
-            action, *splitted = path.removeprefix("/").split("/")
+            action, *splitted = path.removeprefix(self._prefix).removeprefix("/").split("/")
 
             if action == "connect":
                 gate_id, side, connection_id, secret = splitted
@@ -307,7 +308,7 @@ class GatesProvider:
             await ws.close(code=CloseCode.INVALID_DATA)
 
 
-async def server(host: str, port: int, secret: str, single: Optional[str] = None):
+async def server(host: str, port: int, secret: str, prefix: str, header: Optional[str]):
     logger.info(f"Starting {NAME} version {VERSION}, protocol {PROTOCOL_VERSION}...")
 
     stop = asyncio.Event()
@@ -315,7 +316,7 @@ async def server(host: str, port: int, secret: str, single: Optional[str] = None
     loop = asyncio.get_event_loop()
     loop.add_signal_handler(signal.SIGINT, lambda: stop.set())
 
-    gp = GatesProvider(secret)
+    gp = GatesProvider(secret, header, prefix)
     try:
         async with serve(gp.handler, host=host, port=port):
             logger.info(f"Serving on ws://{host}:{port}/...")
@@ -337,6 +338,8 @@ def main():
     parser.add_argument("-b", "--host", default="127.0.0.1", help="The host to bind to.")
     parser.add_argument("-p", "--port", default=8000, type=int, help="The port to bind to.")
     parser.add_argument("-s", "--secret", required=True, default=None, help="The secret to use for authentication.")
+    parser.add_argument("-H", "--header", default=None, help="Remote address header to use for logging.")
+    parser.add_argument("-P", "--prefix", default="", help="Prefix for the websocket path.")
 
     args = parser.parse_args()
 
