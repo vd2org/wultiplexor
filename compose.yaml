@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+
+  traefik:
+    container_name: traefik
+    image: "traefik:2.11"
+    command:
+      - --providers.docker=true
+      - --providers.docker.network=wultiplexor
+      - --entryPoints.web.address=:80
+      - --entryPoints.websecure.address=:443
+      - --certificatesResolvers.letsencrypt.acme.tlsChallenge=true
+      - --certificatesResolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesResolvers.letsencrypt.acme.storage=/etc/traefik/acme/acme.json
+    environment:
+      - ACME_AGREE=true
+    volumes:
+      - /etc/traefik/acme
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    networks:
+      - wultiplexor
+    restart: on-failure
+
+  wultiplexor:
+    container_name: wultiplexor
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    labels:
+      - traefik.http.routers.wultiplexor.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.wultiplexor.service=wultiplexor
+      - traefik.http.services.wultiplexor.loadbalancer.server.port=8000
+      - traefik.http.routers.wultiplexor.entrypoints=websecure
+      - traefik.http.routers.wultiplexor.tls.certresolver=letsencrypt
+    networks:
+      - wultiplexor
+    restart: unless-stopped
+    command: |
+      wultiplexor -b 0.0.0.0 -p 8000 -H X-Forwarded-For -s ${SECRET}
+
+networks:
+  wultiplexor:
+    external: true

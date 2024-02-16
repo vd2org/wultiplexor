@@ -314,7 +314,8 @@ async def server(host: str, port: int, secret: str, prefix: str, header: Optiona
     stop = asyncio.Event()
 
     loop = asyncio.get_event_loop()
-    loop.add_signal_handler(signal.SIGINT, lambda: stop.set())
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, lambda: stop.set())
 
     gp = GatesProvider(secret, header, prefix)
     try:
