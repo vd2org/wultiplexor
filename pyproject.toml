@@ -26,7 +26,6 @@ authors = [{ name = "Vd", email = "wultiplexor@vd2.org" }, ]
 requires-python = ">=3.8,<3.13"
 readme = "README.md"
 license = { file = "LICENSE" }
-
 dependencies = [
     "websockets~=12.0",
 ]
@@ -36,6 +35,16 @@ homepage = "https://github.com/vd2org/wultiplexor"
 repository = "https://github.com/vd2org/wultiplexor.git"
 issues = "https://github.com/vd2org/wultiplexor/issues"
 
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest>=8.0.1",
+    "pytest-asyncio>=0.23.5",
+]
+
+[tool.pdm]
+distribution = true
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
@@ -44,5 +53,3 @@ build-backend = "pdm.backend"
 wultiplexor = "wultiplexor.wultiplexor:main"
 whannel = "wultiplexor.whannel:main"
 
-[tool.pdm]
-distribution = true

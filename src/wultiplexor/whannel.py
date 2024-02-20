@@ -86,7 +86,9 @@ class ControlConnection:
     async def _work(self):
         while True:
             try:
+                await asyncio.sleep(0)
                 msg = await asyncio.wait_for(self._control.recv(), self._touch_timeout)
+
                 if msg.startswith(self.TOUCH):
                     logger.debug("Received touch message from control connection!")
                     continue
