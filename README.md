@@ -13,7 +13,7 @@ You can use it to forward connections from one machine to another both behind NA
 
 ## Why?
 
-In the beginning, I had needed to redirect a unix socket for one special application. 
+In the beginning, I had needed to redirect a unix socket for one specific application. 
 Later I implemented this in a general way.
 
 ## Deploy server using docker compose
@@ -82,5 +82,5 @@ And now you can chat between two machines.
 
 ## Mixed usage
 
-You can mix unix sockets and tcp ports. To do so, use tcp-acceptor from one side and sock-requestor from the other. 
+You can mix unix sockets and tcp ports. To do that, use tcp-acceptor from one side and sock-requestor from the another. 
 Or vice versa. This is also a way to "convert" a unix socket to a tcp port on the same machine.
