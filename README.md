@@ -3,7 +3,7 @@
 ## What?
 
 Wultiplexor is a reverse proxy server and client that uses websockets server to multiplex tcp connections or unix sockets.
-You can use it to pass connection from one machine to another both behind NAT or firewall.
+You can use it to forward connections from one machine to another both behind NAT or firewall.
 
 ## How?
 
@@ -40,6 +40,8 @@ whannel ws://example.com/ requestor sEcReTGaTeWaYnAmeE 9090
 nc localhost 9090
 ```
 
+And now you can chat between the two machines.
+
 ## Forward a unix socket file
 
 - On the one machine calling the server or acceptor
@@ -61,3 +63,5 @@ whannel wss://example.com/ sock-requestor sEcReTGaTeWaYnAmeE ./client
 ```shell
 socat STDIO UNIX-CONNECT:./client
 ```
+
+And now you can chat between the two machines.
