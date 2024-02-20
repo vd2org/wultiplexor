@@ -2,7 +2,7 @@
 
 ## How?
 
-![diagram.png](diagram.png)
+[![Diagram](diagram.png)](#)
 
 ## Deploy server using docker compose
 
