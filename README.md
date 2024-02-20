@@ -24,7 +24,7 @@ DOMAIN=wultiplexor.example.com ACME_EMAIL=acme@example.com SECRET=sEcReTkEy dock
 ```
 
 **WARNING:** The server is not intended to be used "as is" in a public accessible infrastructure. 
-Use a reverse proxy like [Traefik](https://github.com/traefik/traefik) to secure connection like I did in the compose.yaml file.
+Use a reverse proxy like [Traefik](https://github.com/traefik/traefik) to secure the connection like I did in the `compose.yaml` file.
 
 ## Install the client utility
 
