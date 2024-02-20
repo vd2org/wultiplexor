@@ -18,6 +18,12 @@ docker network create wultiplexor
 DOMAIN=wultiplexor.example.com ACME_EMAIL=acme@example.com SECRET=sEcReTkEy docker compose -p wultiplexor -f compose.yaml up --build -d
 ```
 
+## Install the client utility
+
+```shell
+pip install wultiplexor
+```
+
 ## Forward a tcp port
 
 - On the one machine calling the server or acceptor
