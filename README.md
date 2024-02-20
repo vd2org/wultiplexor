@@ -46,7 +46,7 @@ whannel ws://example.com/ requestor sEcReTGaTeWaYnAmeE 9090
 nc localhost 9090
 ```
 
-And now you can chat between the two machines.
+And now you can chat between two machines.
 
 ## Forward a unix socket file
 
@@ -70,4 +70,4 @@ whannel wss://example.com/ sock-requestor sEcReTGaTeWaYnAmeE ./client
 socat STDIO UNIX-CONNECT:./client
 ```
 
-And now you can chat between the two machines.
+And now you can chat between two machines.
