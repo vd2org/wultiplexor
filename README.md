@@ -1,5 +1,8 @@
 # Wultiplexor
 
+## How?
+
+![diagram.png](diagram.png)
 
 ## Deploy server using docker compose
 
