@@ -23,9 +23,6 @@ docker network create wultiplexor
 DOMAIN=wultiplexor.example.com ACME_EMAIL=acme@example.com SECRET=sEcReTkEy docker compose -p wultiplexor -f compose.yaml up --build -d
 ```
 
-The server is not intended to be used as it is in public accessible infrastructure. 
-Use a reverse proxy like [Traefik](https://traefik.io/) to secure connection like I did in the compose.yaml file.
-
 ## Install the client utility
 
 ```shell
