@@ -24,9 +24,9 @@ DOMAIN=wultiplexor.example.com ACME_EMAIL=acme@example.com SECRET=sEcReTkEy dock
 pip install wultiplexor
 ```
 
-## Forward a tcp port
+## Usage: Forward tcp port
 
-- On the one machine calling the server or acceptor
+- On one machine, called the server or acceptor:
 
 ```shell
 whannel ws://example.com/ acceptor -s sEcReTkEy localhost 8080 sEcReTGaTeWaYnAmeE
@@ -36,7 +36,7 @@ whannel ws://example.com/ acceptor -s sEcReTkEy localhost 8080 sEcReTGaTeWaYnAme
 nc -l 8080
 ```
 
-- On the other machine calling the client or requester
+- On another machine, called client or requestor:
 
 ```shell
 whannel ws://example.com/ requestor sEcReTGaTeWaYnAmeE 9090
@@ -48,9 +48,9 @@ nc localhost 9090
 
 And now you can chat between two machines.
 
-## Forward a unix socket file
+## Usage: Forward unix socket file
 
-- On the one machine calling the server or acceptor
+- On one machine, called the server or acceptor:
 
 ```shell
 whannel wss://example.com/ sock-acceptor -s sEcReTkEy ./server sEcReTGaTeWaYnAmeE
@@ -60,7 +60,7 @@ whannel wss://example.com/ sock-acceptor -s sEcReTkEy ./server sEcReTGaTeWaYnAme
 socat UNIX-LISTEN:./server,fork STDIO
 ```
 
-- On the other machine calling the client or requester
+- On another machine, called client or requestor:
 
 ```shell
 whannel wss://example.com/ sock-requestor sEcReTGaTeWaYnAmeE ./client
