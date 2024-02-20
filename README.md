@@ -45,7 +45,7 @@ nc localhost 9090
 - On the one machine calling the server or acceptor
 
 ```shell
-whannel ws://example.com/ sock-acceptor -s sEcReTkEy ./server sEcReTGaTeWaYnAmeE
+whannel wss://example.com/ sock-acceptor -s sEcReTkEy ./server sEcReTGaTeWaYnAmeE
 ```
 
 ```shell
@@ -55,7 +55,7 @@ socat UNIX-LISTEN:./server,fork STDIO
 - On the other machine calling the client or requester
 
 ```shell
-whannel ws://example.com/ sock-requestor sEcReTGaTeWaYnAmeE ./client
+whannel wss://example.com/ sock-requestor sEcReTGaTeWaYnAmeE ./client
 ```
 
 ```shell
