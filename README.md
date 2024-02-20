@@ -2,7 +2,7 @@
 
 ## What?
 
-Wultiplexor is a reverse proxy server and client that uses websockets server to multiplex tcp connections or unix sockets.
+Wultiplexor is a reverse proxy server and client that uses websockets to multiplex tcp connections or unix sockets.
 You can use it to forward connections from one machine to another both behind NAT or firewall.
 
 ## How?
@@ -22,6 +22,9 @@ Later I implemented this in a general way.
 docker network create wultiplexor
 DOMAIN=wultiplexor.example.com ACME_EMAIL=acme@example.com SECRET=sEcReTkEy docker compose -p wultiplexor -f compose.yaml up --build -d
 ```
+
+The server is not intended to be used as it is in public accessible infrastructure. 
+Use a reverse proxy like [Traefik](https://traefik.io/) to secure connection like I did in the compose.yaml file.
 
 ## Install the client utility
 
