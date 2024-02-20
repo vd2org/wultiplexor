@@ -2,7 +2,9 @@
 
 ## How?
 
-[![Diagram](diagram.png)](#)
+<picture>
+  <img alt="Diagram" src="diagram.png">
+</picture>
 
 ## Deploy server using docker compose
 
