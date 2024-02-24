@@ -577,8 +577,7 @@ def main():
         "sock-acceptor": SockAcceptor,
     }
 
-    if not (worker := workers.get(args.pop("mode"))):
-        raise NotImplementedError(f"Mode is not implemented!")
+    worker = workers.get(args.pop("mode"))
 
     asyncio.run(runner(worker(**args).serve))
 
