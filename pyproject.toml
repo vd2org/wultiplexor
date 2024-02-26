@@ -53,4 +53,3 @@ build-backend = "pdm.backend"
 [project.scripts]
 wultiplexor = "wultiplexor.wultiplexor:main"
 whannel = "wultiplexor.whannel:main"
-
