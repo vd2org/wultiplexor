@@ -40,6 +40,7 @@ issues = "https://github.com/vd2org/wultiplexor/issues"
 dev = [
     "pytest>=8.0.1",
     "pytest-asyncio>=0.23.5",
+    "requests>=2.31.0",
 ]
 
 [tool.pdm]
