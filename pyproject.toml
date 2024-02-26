@@ -41,10 +41,17 @@ dev = [
     "pytest>=8.0.1",
     "pytest-asyncio>=0.23.5",
     "requests>=2.31.0",
+    "ubump~=0.1.10; python_version >= '3.11'",
 ]
 
 [tool.pdm]
 distribution = true
+
+[tool.ubump]
+template = "v${major}.${minor}.${patch}"
+message = "Bump to ${version}"
+tag = true
+files = []
 
 [build-system]
 requires = ["pdm-backend"]
