@@ -29,7 +29,7 @@ services:
         mode: host
     networks:
       - wultiplexor
-    restart: on-failure
+    restart: unless-stopped
 
   wultiplexor:
     container_name: wultiplexor
